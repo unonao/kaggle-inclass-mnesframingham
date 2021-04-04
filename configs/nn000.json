@@ -1,0 +1,24 @@
+{
+    "features": [
+        "original",
+        "pca",
+        "age_sysbp",
+        "female08_sysbp",
+        "female085_age"
+    ],
+    "model": "nn",
+    "params": {
+        "epochs": 50,
+        "bs": 128,
+        "hidden_size": 200,
+        "lr": 3e-3,
+        "weight_decay": 5e-4,
+        "early_stopping_step": 10,
+        "early_stop": true,
+        "seed": 49,
+        "num_class": 2
+    },
+    "loss": "auc",
+    "target_name": "TenYearCHD",
+    "ID_name": "index"
+}

@@ -44,12 +44,13 @@ def fill_features_na(df):
     heartRate            1
     glucose            388
     """
-    return df.fillna(df.median)
+    return df.fillna(df.median())
 
 class Original(Feature):
     def create_features(self):
         self.train = train
         self.test = test
+
 
 # target encode
 class currentSmoker_target(Feature): # 効果無し
@@ -112,6 +113,7 @@ class bpmeds_target(Feature): # 効果無し
         new_test = test_targetc.fit_transform(test)
         self.train[target_encode_name] = new_train[target_encode_name]
         self.test[target_encode_name] = new_test[target_encode_name]
+
 
 
 

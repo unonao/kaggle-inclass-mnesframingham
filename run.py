@@ -5,12 +5,14 @@ pd.set_option('display.max_columns', 500)
 import datetime
 import logging
 from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+
 import argparse
 import json
 import numpy as np
 
 from utils import load_datasets, load_target, evaluate_score
-from models import LightGBM
+from models import LightGBM, NeuralNet
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -68,6 +70,8 @@ def train_and_predict(X_train_all, y_train_all, X_test):
         # train & inference
         if model_name=="lightgbm":
             classifier = LightGBM()
+        elif model_name == "nn":
+            classifier = NeuralNet()
         else:
             logger.debug("No such model name")
             raise Exception
@@ -140,9 +144,19 @@ def main():
     # 指定した特徴量からデータをロード
     X_train_all, X_test = load_datasets(feats)
     y_train_all = load_target(target_name)
+    cols = X_train_all.columns
+    if model_name == "nn":
+        logger.debug("scaling")
+        scaler = StandardScaler()
+        all_df = pd.concat([X_train_all,X_test])
+        all_df = all_df.fillna(all_df.median())
+        all_df[cols] = scaler.fit_transform(all_df[cols])
+        X_train_all = all_df[:X_train_all.shape[0]].reset_index(drop=True)
+        X_test = all_df[X_train_all.shape[0]:].reset_index(drop=True)
     logger.debug("X_train_all shape: {}".format(X_train_all.shape))
+    print(X_train_all.info())
     train_and_predict(X_train_all, y_train_all, X_test)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
