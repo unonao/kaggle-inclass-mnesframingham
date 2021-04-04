@@ -4,7 +4,7 @@ pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 import datetime
 import logging
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 import argparse
 import json
 import numpy as np
@@ -26,6 +26,7 @@ feats = config['features']
 target_name = config['target_name']
 model_name = config['model']
 model_params = config['params']
+seed = config['params']["seed"]
 
 # log の設定
 now = datetime.datetime.now()
@@ -59,8 +60,8 @@ def train_and_predict(X_train_all, y_train_all, X_test):
     acc_scores = []
     logloss_scores  = []
 
-    kf = KFold(n_splits=5)
-    for train_index, valid_index in kf.split(X_train_all):
+    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    for train_index, valid_index in kf.split(X_train_all,y_train_all):
         X_train, X_valid = (X_train_all.iloc[train_index, :], X_train_all.iloc[valid_index, :])
         y_train, y_valid = (y_train_all.iloc[train_index], y_train_all.iloc[valid_index])
 

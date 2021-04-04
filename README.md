@@ -6,9 +6,13 @@ https://www.kaggle.com/c/mnesframingham/overview
 
 
 # やること
+- Stratified KFold に変更
+- 特徴量エンジニアリング
+    - 欠損値の対応
+    - polynomial
+    - lightgbm の結果を元に、重要な特徴量の積などを考える。target と相関が高そうな指標を自作する
 - NN
     - https://www.kaggle.com/lopuhin/mercari-golf-0-3875-cv-in-75-loc-1900-s
-
 
 # Structures
 

@@ -57,7 +57,7 @@ class FixingSkewnessOriginal(Feature): # 効果無し
         self.train = df[:train.shape[0]]
         self.test = df[train.shape[0]:]
 
-class Pca(Feature):    # 効果無し
+class Pca(Feature):    # 効果あり
     def create_features(self):
         df = fill_features_na(features.copy()) # 欠損値を穴埋め
         scaler = StandardScaler()
