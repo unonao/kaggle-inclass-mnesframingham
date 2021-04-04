@@ -3,6 +3,7 @@ import pandas as pd
 import re as re
 
 from base import Feature, get_arguments, generate_features
+from target_encoder import KFoldTargetEncoderTrain, TargetEncoderTest
 
 from scipy.stats import skew  # for some statistics
 from scipy.special import boxcox1p
@@ -50,6 +51,137 @@ class Original(Feature):
         self.train = train
         self.test = test
 
+# target encode
+class currentSmoker_target(Feature): # 効果無し
+    def create_features(self):
+        feature_name = "currentSmoker"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+class diabetes_target(Feature): # 効果無し
+    def create_features(self):
+        feature_name = "diabetes"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+class prevalentHyp_target(Feature): # 効果あり！！
+    def create_features(self):
+        feature_name = "prevalentHyp"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+class prevalentStroke_target(Feature):  # 効果無し
+    def create_features(self):
+        feature_name = "prevalentStroke"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+class education_target(Feature): # 効果無し
+    def create_features(self):
+        feature_name = "education"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+class bpmeds_target(Feature): # 効果無し
+    def create_features(self):
+        feature_name = "BPMeds"
+        target_encode_name = f'{feature_name}_Kfold_Target_Enc'
+        targetc = KFoldTargetEncoderTrain(feature_name,'TenYearCHD',n_fold=5)
+        new_train = targetc.fit_transform(train_with_target)
+        test_targetc = TargetEncoderTest(new_train, feature_name, target_encode_name)
+        new_test = test_targetc.fit_transform(test)
+        self.train[target_encode_name] = new_train[target_encode_name]
+        self.test[target_encode_name] = new_test[target_encode_name]
+
+
+
+# poly から考えた特徴量
+class AgeSysbp(Feature):
+    def create_features(self):
+        self.train["age_sysBP"] = train["age"]*train["sysBP"]
+        self.test["age_sysBP"] = test["age"]*test["sysBP"]
+class Female08Sysbp(Feature):
+    def create_features(self):
+        female = features["male"].copy()
+        female[female==0] = 0.8
+        df = female * features["sysBP"]
+        self.train["female08_sysBP"] = df[:train.shape[0]]
+        self.test["female08_sysBP"] = df[train.shape[0]:]
+class Age2Diabp(Feature):
+    def create_features(self):
+        self.train["age2_diaBP"] = train["age"]**2 *train["diaBP"]
+        self.test["age2_diaBP"] = test["age"]**2 *test["diaBP"]
+class Female085Age(Feature):
+    def create_features(self):
+        female = features["male"].copy()
+        female[female==0] = 0.85
+        df = female * features["age"]
+        self.train["female085_age"] = df[:train.shape[0]]
+        self.test["female085_age"] = df[train.shape[0]:]
+class Noprevalenthyp085Age(Feature):
+    def create_features(self):
+        noprevalentHyp = features["prevalentHyp"].copy()
+        noprevalentHyp[noprevalentHyp==0] = 0.85
+        df = noprevalentHyp * features["age"]
+        self.train["noprevalenthyp085_age"] = df[:train.shape[0]]
+        self.test["noprevalenthyp085_age"] = df[train.shape[0]:]
+class Female08Diabp(Feature):
+    def create_features(self):
+        female = features["male"].copy()
+        female[female==0] = 0.8
+        df = female * features["diaBP"]
+        self.train["female08_diaBP"] = df[:train.shape[0]]
+        self.test["female08_diaBP"] = df[train.shape[0]:]
+class Nosmoker092Diabp(Feature):
+    def create_features(self):
+        nosmoker = features["currentSmoker"].copy()
+        nosmoker[nosmoker==0] = 0.92
+        df = nosmoker * features["diaBP"]
+        self.train["nosmoker092_diaBP"] = df[:train.shape[0]]
+        self.test["nosmoker092_diaBP"] = df[train.shape[0]:]
+class Noprevalenthyp085Diabp(Feature):
+    def create_features(self):
+        noprevalentHyp = features["prevalentHyp"].copy()
+        noprevalentHyp[noprevalentHyp==0] = 0.85
+        df = noprevalentHyp * features["diaBP"]
+        self.train["noprevalenthyp085_diaBP"] = df[:train.shape[0]]
+        self.test["noprevalenthyp085_diaBP"] = df[train.shape[0]:]
+class Nodiabetes065Diabp(Feature):
+    def create_features(self):
+        nodiabetes = features["diabetes"].copy()
+        nodiabetes[nodiabetes==0] = 0.85
+        df = nodiabetes * features["diaBP"]
+        self.train["nodiabetes065_diaBP"] = df[:train.shape[0]]
+        self.test["nodiabetes065_diaBP"] = df[train.shape[0]:]
+class Nodiabetes065Sysbp(Feature):
+    def create_features(self):
+        nodiabetes = features["diabetes"].copy()
+        nodiabetes[nodiabetes==0] = 0.85
+        df = nodiabetes * features["sysBP"]
+        self.train["nodiabetes065_sysBP"] = df[:train.shape[0]]
+        self.test["nodiabetes065_sysBP"] = df[train.shape[0]:]
+
+
 class FixingSkewnessOriginal(Feature): # 効果無し
     def create_features(self):
         df = features.copy()
@@ -77,6 +209,7 @@ class Pca(Feature):    # 効果あり
         embeded = pd.DataFrame(bhtsne.tsne(all_df[numeric_features].astype(np.float64), dimensions=n_tsne, rand_seed=10), columns=tsne_cols)
         features = pd.concat([scaled_df, pca_df, embeded], axis=1)
         '''
+
 
 class Polynomial2d(Feature): # うまくいった。もう少し絞るのが良さそう
     def create_features(self):
@@ -108,7 +241,7 @@ class Polynomial3d(Feature):
         self.train = poly_df[: train.shape[0]].reset_index(drop=True)
         self.test = poly_df[train.shape[0]:].reset_index(drop=True)
 
-class FraminghamRiskScore(Feature):
+class FraminghamRiskScore(Feature): # 効果なし
     # https://www.nhlbi.nih.gov/sites/default/files/media/docs/risk-assessment.pdf
     """
     HDL は無し
@@ -159,8 +292,8 @@ class FraminghamRiskScore(Feature):
 
 if __name__ == '__main__':
     args = get_arguments()
-    train = pd.read_feather('./data/interim/train.feather')
-    train = train.drop(["index","TenYearCHD"],axis=1) # index,target を落とす
+    train_with_target = pd.read_feather('./data/interim/train.feather')
+    train = train_with_target.drop(["index","TenYearCHD"],axis=1) # index,target を落とす
     test = pd.read_feather('./data/interim/test.feather')
     test = test.drop(["index"],axis=1) # index を落とす
     features = pd.concat([train, test])
