@@ -1,6 +1,7 @@
 {
     "features": [
-        "original"
+        "original",
+        "polynomial3d"
     ],
     "model": "lightgbm",
     "params": {

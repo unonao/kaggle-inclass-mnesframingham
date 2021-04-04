@@ -1,6 +1,7 @@
 {
     "features": [
-        "original"
+        "original",
+        "framingham_risk_score"
     ],
     "model": "lightgbm",
     "params": {

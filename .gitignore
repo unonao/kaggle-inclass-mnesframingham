@@ -12,6 +12,7 @@ features/importances/*.png
 
 # log
 logs/*.log
+logs/plots/*.png
 
 ### JupyterNotebook ###
 .ipynb_checkpoints

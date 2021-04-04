@@ -9,6 +9,8 @@ import numpy as np
 
 from utils import load_datasets, load_target, evaluate_score
 from models import LightGBM
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 引数で config の設定を行う
 parser = argparse.ArgumentParser()
@@ -42,6 +44,8 @@ handler_file.setFormatter(Formatter("%(asctime)s: %(message)s"))
 #loggerに2つのハンドラを設定
 logger.addHandler(handler_stream)
 logger.addHandler(handler_file)
+
+
 
 def train_and_predict(X_train_all, y_train_all, X_test):
 
@@ -81,6 +85,21 @@ def train_and_predict(X_train_all, y_train_all, X_test):
         acc_scores.append(acc_valid)
         logloss_scores.append(logloss_valid)
 
+
+    # lightgbmなら重要度の出力
+    if model_name=="lightgbm":
+        feature_imp_np = np.zeros(X_train_all.shape[1])
+        for model in models:
+            feature_imp_np += model.feature_importance()/len(models)
+        feature_imp = pd.DataFrame(sorted(zip(feature_imp_np, X_train_all.columns)), columns=['Value', 'Feature'])
+        #print(feature_imp)
+        logger.debug(feature_imp)
+        plt.figure(figsize=(20, 10))
+        sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
+        plt.title('LightGBM Features (avg over folds)')
+        plt.tight_layout()
+        plt.savefig(f'./logs/plots/features_{config_filename}.png')
+
     # oof
     oof_df.to_csv(
         f'./data/output/oof_{config_filename}.csv',
@@ -99,18 +118,15 @@ def train_and_predict(X_train_all, y_train_all, X_test):
     sub = pd.DataFrame(pd.read_feather(f'data/interim/test.feather')[ID_name])
     y_sub = sum(y_preds) / len(y_preds)
     sub[target_name] = y_sub[:, 1]
-
     ''' 確率ではなく番号を出力
     if y_sub.shape[1] > 1:
         y_sub = np.argmax(y_sub, axis=1)
     '''
-    # 提出形式をあわせる
     sub = sub.rename(columns={ID_name: 'Id', target_name:"label"})
     sub.to_csv(
         f'./data/output/sub_{config_filename}.csv',
         index=False
     )
-
 
 def main():
 

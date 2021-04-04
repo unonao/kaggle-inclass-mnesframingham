@@ -1,4 +1,4 @@
-# kaggle-inclass-mnesframingam
+# kaggle-inclass-mnesframingham
 
 プライベートコンペでのフラミンガム研究
 

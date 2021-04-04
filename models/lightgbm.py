@@ -15,7 +15,7 @@ class LightGBM(Model):
 
         # ロガーの作成
         logger = logging.getLogger('main')
-        callbacks = [log_evaluation(logger, period=30)]
+        callbacks = [log_evaluation(logger, period=200)]
 
         # 上記のパラメータでモデルを学習する
         model = lgb.train(
