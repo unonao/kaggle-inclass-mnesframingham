@@ -5,7 +5,7 @@ pd.set_option('display.max_columns', 500)
 import datetime
 import logging
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler,QuantileTransformer
 
 import argparse
 import json
@@ -29,6 +29,7 @@ target_name = config['target_name']
 model_name = config['model']
 model_params = config['params']
 seed = config['params']["seed"]
+ID_name = config['ID_name']
 
 # log の設定
 now = datetime.datetime.now()
@@ -52,9 +53,9 @@ logger.addHandler(handler_file)
 
 
 
-def train_and_predict(X_train_all, y_train_all, X_test):
-
-    oof_df = pd.DataFrame(index=[i for i in range(X_train_all.shape[0])], columns=[i for i in range(model_params["num_class"])])  # meta model の X_train に
+def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
+    model_params["seed"] = seed + seed_num
+    oof_df = pd.DataFrame(index=[i for i in range(X_train_all.shape[0])], columns=[i for i in range(model_params["num_class"])])
     y_preds = []
 
     models = []
@@ -62,8 +63,9 @@ def train_and_predict(X_train_all, y_train_all, X_test):
     acc_scores = []
     logloss_scores  = []
 
-    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    for train_index, valid_index in kf.split(X_train_all,y_train_all):
+    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=model_params["seed"])
+    for fold_num, (train_index, valid_index) in enumerate(kf.split(X_train_all,y_train_all)):
+        logger.debug(f"FOLD: {fold_num}")
         X_train, X_valid = (X_train_all.iloc[train_index, :], X_train_all.iloc[valid_index, :])
         y_train, y_valid = (y_train_all.iloc[train_index], y_train_all.iloc[valid_index])
 
@@ -71,7 +73,7 @@ def train_and_predict(X_train_all, y_train_all, X_test):
         if model_name=="lightgbm":
             classifier = LightGBM()
         elif model_name == "nn":
-            classifier = NeuralNet()
+            classifier = NeuralNet(seed_num, fold_num)
         else:
             logger.debug("No such model name")
             raise Exception
@@ -107,11 +109,6 @@ def train_and_predict(X_train_all, y_train_all, X_test):
         plt.tight_layout()
         plt.savefig(f'./logs/plots/features_{config_filename}.png')
 
-    # oof
-    oof_df.to_csv(
-        f'./data/output/oof_{config_filename}.csv',
-        index=False
-    )
     # CVスコア
     auc_score = sum(auc_scores) / len(auc_scores)
     acc_score = sum(acc_scores) / len(acc_scores)
@@ -121,7 +118,6 @@ def train_and_predict(X_train_all, y_train_all, X_test):
 
 
     # submitファイルの作成
-    ID_name = config['ID_name']
     sub = pd.DataFrame(pd.read_feather(f'data/interim/test.feather')[ID_name])
     y_sub = sum(y_preds) / len(y_preds)
     sub[target_name] = y_sub[:, 1]
@@ -130,10 +126,8 @@ def train_and_predict(X_train_all, y_train_all, X_test):
         y_sub = np.argmax(y_sub, axis=1)
     '''
     sub = sub.rename(columns={ID_name: 'Id', target_name:"label"})
-    sub.to_csv(
-        f'./data/output/sub_{config_filename}.csv',
-        index=False
-    )
+
+    return oof_df, sub
 
 def main():
 
@@ -145,18 +139,34 @@ def main():
     X_train_all, X_test = load_datasets(feats)
     y_train_all = load_target(target_name)
     cols = X_train_all.columns
-    if model_name == "nn":
-        logger.debug("scaling")
-        scaler = StandardScaler()
+    if model_name != "lightgbm":
+        logger.debug("rank gauss")
+        scaler = QuantileTransformer(n_quantiles=100, random_state=model_params["seed"],output_distribution="normal")
         all_df = pd.concat([X_train_all,X_test])
-        all_df = all_df.fillna(all_df.median())
-        all_df[cols] = scaler.fit_transform(all_df[cols])
+        all_df = all_df.fillna(all_df.median()) # 欠損値埋め
+        all_df[cols] = scaler.fit_transform(all_df[cols]) # scale
         X_train_all = all_df[:X_train_all.shape[0]].reset_index(drop=True)
         X_test = all_df[X_train_all.shape[0]:].reset_index(drop=True)
     logger.debug("X_train_all shape: {}".format(X_train_all.shape))
     print(X_train_all.info())
-    train_and_predict(X_train_all, y_train_all, X_test)
 
+    # seed ごとにループ
+    oof_df = pd.DataFrame(index=[i for i in range(X_train_all.shape[0])], columns=[i for i in range(model_params["num_class"])])
+    sub = pd.DataFrame(pd.read_feather(f'data/interim/test.feather')[ID_name])
+    sub[target_name] = 0
+    for seed_num in range(config["seed_num"]):
+        logger.debug(f"SEED: {seed_num}")
+        one_oof_df, one_sub = train_and_predict(X_train_all, y_train_all, X_test, seed_num=seed_num)
+        oof_df += one_oof_df/config["seed_num"]
+        sub += one_sub/config["seed_num"]
+    oof_df.to_csv(
+        f'./data/output/oof_{config_filename}.csv',
+        index=False
+    )
+    sub.to_csv(
+        f'./data/output/sub_{config_filename}.csv',
+        index=False
+    )
 
 if __name__ == "__main__":
     main()

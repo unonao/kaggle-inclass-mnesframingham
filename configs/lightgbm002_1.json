@@ -17,6 +17,7 @@
         "seed": 41,
         "num_threads": 7
     },
+    "seed_num": 1,
     "loss": "auc",
     "target_name": "TenYearCHD",
     "ID_name": "index"

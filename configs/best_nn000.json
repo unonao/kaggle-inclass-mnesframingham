@@ -1,7 +1,7 @@
 {
     "features": [
         "original",
-        "pca",
+        "pca4",
         "age_sysbp",
         "female08_sysbp",
         "female085_age"
@@ -10,12 +10,12 @@
     "params": {
         "epochs": 50,
         "bs": 256,
-        "hidden_size": 300,
-        "dropout_rate": 0.5,
-        "layer_num": 3,
+        "hidden_size": 100,
+        "dropout_rate": 0.3,
+        "layer_num": 4,
         "scheduler": "CosineAnnealingWarmRestarts",
         "T_0": 5,
-        "lr": 3e-2,
+        "lr": 5e-2,
         "min_lr": 5e-4,
         "momentum": 0.9,
         "early_stopping_step": 10,
@@ -23,7 +23,7 @@
         "seed": 49,
         "num_class": 2
     },
-    "seed_num": 1,
+    "seed_num": 5,
     "loss": "auc",
     "target_name": "TenYearCHD",
     "ID_name": "index"

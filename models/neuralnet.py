@@ -1,16 +1,29 @@
 import logging
+import random
+import os
 
 import numpy as np
 import pandas as pd
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CosineAnnealingLR, ReduceLROnPlateau
+
+from sklearn.metrics import roc_auc_score
 
 from models.base import Model
 from .sam import SAMSGD
+
+
+def seed_torch(seed=42):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
 # データセット
 class TrainDataset:
@@ -39,16 +52,17 @@ class TestDataset:
 
 # モデル本体
 class NNModel(nn.Module):
-    def __init__(self, num_features, num_targets, hidden_size):
+    def __init__(self, num_features, num_targets, hidden_size, dropout_rate,layer_num):
         super(NNModel, self).__init__()
+        self.layer_num = layer_num
         self.batch_norm1 = nn.BatchNorm1d(num_features)
-        self.dropout1 = nn.Dropout(0.3)
+        self.dropout1 = nn.Dropout(dropout_rate)
         self.dense1 = nn.utils.weight_norm(nn.Linear(num_features, hidden_size))
-        self.batch_norm2 = nn.BatchNorm1d(hidden_size)
-        self.dropout2 = nn.Dropout(0.4)
-        self.dense2 = nn.utils.weight_norm(nn.Linear(hidden_size, hidden_size))
+        self.batch_norm_mid = nn.BatchNorm1d(hidden_size)
+        self.dropout_mid = nn.Dropout(dropout_rate)
+        self.dense_mid = nn.utils.weight_norm(nn.Linear(hidden_size, hidden_size))
         self.batch_norm3 = nn.BatchNorm1d(hidden_size)
-        self.dropout3 = nn.Dropout(0.4)
+        self.dropout3 = nn.Dropout(dropout_rate)
         self.dense3 = nn.utils.weight_norm(nn.Linear(hidden_size, num_targets))
 
     def recalibrate_layer(self, layer):
@@ -63,15 +77,13 @@ class NNModel(nn.Module):
     def forward(self, x):
         x = self.batch_norm1(x)
         x = self.dropout1(x)
-        #self.recalibrate_layer(self.dense1)
         x = F.relu(self.dense1(x))
-        x = self.batch_norm2(x)
-        x = self.dropout2(x)
-        #self.recalibrate_layer(self.dense2)
-        x = F.relu(self.dense2(x))
+        for _ in range(self.layer_num-2):
+            x = self.batch_norm_mid(x)
+            x = self.dropout_mid(x)
+            x = F.relu(self.dense_mid(x))
         x = self.batch_norm3(x)
         x = self.dropout3(x)
-        #self.recalibrate_layer(self.dense3)
         x = self.dense3(x)
         return x
 
@@ -125,13 +137,25 @@ def inference_fn(model, dataloader, device):
     preds = np.concatenate(preds)
     return preds
 
+def get_scheduler(optimizer,CFG):
+    if CFG["scheduler"]=='ReduceLROnPlateau':
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=CFG["factor"], patience=CFG["patience"], verbose=True, eps=CFG["eps"])
+    elif CFG["scheduler"]=='CosineAnnealingLR':
+        scheduler = CosineAnnealingLR(optimizer, T_max=CFG["T_max"], eta_min=CFG["min_lr"], last_epoch=-1)
+    elif CFG["scheduler"]=='CosineAnnealingWarmRestarts':
+        scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=CFG["T_0"], T_mult=1, eta_min=CFG["min_lr"], last_epoch=-1)
+    return scheduler
+
 class NeuralNet(Model):
+    def __init__(self,seed_num, fold_num):
+        self.seed_num = seed_num
+        self.fold_num = fold_num
     def train_and_predict(self, X_train, X_valid, y_train, y_valid, X_test, params):
+        seed_torch(params["seed"])
         DEVICE = ('cuda' if torch.cuda.is_available() else 'cpu')
         EPOCHS = params["epochs"]
         BATCH_SIZE = params["bs"]
         LEARNING_RATE = params["lr"]
-        WEIGHT_DECAY = params["weight_decay"]
         EARLY_STOPPING_STEPS = params["early_stopping_step"]
         EARLY_STOP = params["early_stop"]
 
@@ -139,6 +163,8 @@ class NeuralNet(Model):
         num_features=X_train.shape[1]
         num_targets= params["num_class"]
         hidden_size= params["hidden_size"]
+        dropout_rate= params["dropout_rate"]
+        layer_num = params["layer_num"]
 
         # ロガー
         logger = logging.getLogger('main')
@@ -152,25 +178,25 @@ class NeuralNet(Model):
             num_features=num_features,
             num_targets=num_targets,
             hidden_size=hidden_size,
+            dropout_rate = dropout_rate,
+            layer_num = layer_num,
         )
         model.to(DEVICE)
 
 
-        #optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
         optimizer = SAMSGD(model.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        scheduler = optim.lr_scheduler.OneCycleLR(optimizer=optimizer, pct_start=0.1, div_factor=1e3,
-                                                max_lr=1e-2, epochs=EPOCHS, steps_per_epoch=len(trainloader))
-        #loss_fn = nn.BCEWithLogitsLoss()
+        scheduler = get_scheduler(optimizer,CFG=params)
         loss_fn = nn.CrossEntropyLoss()
         early_step = 0
-        best_loss = np.inf
+        best_auc = 0
         for epoch in range(EPOCHS):
             train_loss = train_fn(model, optimizer,scheduler, loss_fn, trainloader, DEVICE)
             valid_loss, valid_preds = valid_fn(model, loss_fn, validloader, DEVICE)
-            logger.debug(f"EPOCH: {epoch}, train_loss: {train_loss}, valid_loss: {valid_loss}")
+            valid_auc = roc_auc_score(y_valid, valid_preds[:,1])
+            logger.debug(f"SEED:{self.seed_num}, FOLD:{self.fold_num}, EPOCH: {epoch}, train_loss: {train_loss:.4f}, valid_loss: {valid_loss:.4f}, valid_auc:{valid_auc:.4f}")
 
-            if valid_loss < best_loss:
-                best_loss = valid_loss
+            if valid_auc > best_auc:
+                best_auc = valid_auc
                 y_valid_pred = valid_preds
                 torch.save(model.state_dict(), f"save/best.pth")
                 early_step = 0
@@ -185,6 +211,8 @@ class NeuralNet(Model):
             num_features=num_features,
             num_targets=num_targets,
             hidden_size=hidden_size,
+            dropout_rate = dropout_rate,
+            layer_num = layer_num
         )
         model.load_state_dict(torch.load(f"save/best.pth"))
         model.to(DEVICE)
