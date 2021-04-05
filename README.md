@@ -6,8 +6,7 @@ https://www.kaggle.com/c/mnesframingham/overview
 
 
 # やること
-- 線形モデル
-- アンサンブル・スタッキング
+- スタッキング
 
 # 良かったやつ
 - lightgbm

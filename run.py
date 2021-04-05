@@ -12,7 +12,7 @@ import json
 import numpy as np
 
 from utils import load_datasets, load_target, evaluate_score
-from models import LightGBM, NeuralNet
+from models import LightGBM, NeuralNet,LogisticRegressionClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -74,6 +74,8 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
             classifier = LightGBM()
         elif model_name == "nn":
             classifier = NeuralNet(seed_num, fold_num)
+        elif model_name == "logistic_regression":
+            classifier = LogisticRegressionClassifier()
         else:
             logger.debug("No such model name")
             raise Exception
@@ -125,7 +127,6 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
     if y_sub.shape[1] > 1:
         y_sub = np.argmax(y_sub, axis=1)
     '''
-    sub = sub.rename(columns={ID_name: 'Id', target_name:"label"})
 
     return oof_df, sub
 
@@ -151,14 +152,17 @@ def main():
     print(X_train_all.info())
 
     # seed ごとにループ
-    oof_df = pd.DataFrame(index=[i for i in range(X_train_all.shape[0])], columns=[i for i in range(model_params["num_class"])])
+    class_cols = [i for i in range(model_params["num_class"])]
+    oof_df = pd.DataFrame(index=[i for i in range(X_train_all.shape[0])], columns=class_cols)
     sub = pd.DataFrame(pd.read_feather(f'data/interim/test.feather')[ID_name])
+    oof_df[class_cols] = 0
     sub[target_name] = 0
     for seed_num in range(config["seed_num"]):
         logger.debug(f"SEED: {seed_num}")
         one_oof_df, one_sub = train_and_predict(X_train_all, y_train_all, X_test, seed_num=seed_num)
-        oof_df += one_oof_df/config["seed_num"]
-        sub += one_sub/config["seed_num"]
+        oof_df[class_cols] += one_oof_df[class_cols]/config["seed_num"]
+        sub[target_name]+= one_sub[target_name]/config["seed_num"]
+    sub = sub.rename(columns={ID_name: 'Id', target_name:"label"})
     oof_df.to_csv(
         f'./data/output/oof_{config_filename}.csv',
         index=False
