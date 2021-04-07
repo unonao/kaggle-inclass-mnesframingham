@@ -12,7 +12,7 @@ import json
 import numpy as np
 
 from utils import load_datasets, load_target, evaluate_score
-from models import LightGBM, NeuralNet,LogisticRegressionClassifier
+from models import LightGBM, NeuralNet,LogisticRegressionClassifier, CNN1d
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -63,7 +63,7 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
     acc_scores = []
     logloss_scores  = []
 
-    kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=model_params["seed"])
+    kf = StratifiedKFold(n_splits=config["fold"], shuffle=True, random_state=model_params["seed"])
     for fold_num, (train_index, valid_index) in enumerate(kf.split(X_train_all,y_train_all)):
         logger.debug(f"FOLD: {fold_num}")
         X_train, X_valid = (X_train_all.iloc[train_index, :], X_train_all.iloc[valid_index, :])
@@ -74,6 +74,8 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
             classifier = LightGBM()
         elif model_name == "nn":
             classifier = NeuralNet(seed_num, fold_num)
+        elif model_name == "cnn1d":
+            classifier = CNN1d(seed_num, fold_num)
         elif model_name == "logistic_regression":
             classifier = LogisticRegressionClassifier()
         else:
@@ -115,7 +117,7 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
     auc_score = sum(auc_scores) / len(auc_scores)
     acc_score = sum(acc_scores) / len(acc_scores)
     logloss_score = sum(logloss_scores) / len(logloss_scores)
-    logger.debug('===CV scores===')
+    logger.debug('=== CV scores ===')
     logger.debug(f"\t auc:{auc_score}, acc: {acc_score}, logloss: {logloss_score}")
 
 
@@ -162,6 +164,13 @@ def main():
         one_oof_df, one_sub = train_and_predict(X_train_all, y_train_all, X_test, seed_num=seed_num)
         oof_df[class_cols] += one_oof_df[class_cols]/config["seed_num"]
         sub[target_name]+= one_sub[target_name]/config["seed_num"]
+
+    auc_score = evaluate_score(y_train_all.values, oof_df.values[:,1], "auc")
+    acc_score = evaluate_score(y_train_all.values, oof_df.values.argmax(axis=1), "acc")
+    logloss_score = evaluate_score(y_train_all.values, oof_df.values[:,1], "logloss")
+    logger.debug('=== OOF CV scores ===')
+    logger.debug(f"\t auc:{auc_score}, acc: {acc_score}, logloss: {logloss_score}")
+
     sub = sub.rename(columns={ID_name: 'Id', target_name:"label"})
     oof_df.to_csv(
         f'./data/output/oof_{config_filename}.csv',

@@ -191,7 +191,14 @@ class FixingSkewnessOriginal(Feature): # 効果無し
         self.train = df[:train.shape[0]]
         self.test = df[train.shape[0]:]
 
-class Pca(Feature):    # 効果あり
+class CountNull(Feature):
+    def create_features(self):
+        df = features.copy()
+        df = features.isnull().sum(axis=1)
+        self.train["count_null"] = df[:train.shape[0]].reset_index(drop=True)
+        self.test["count_null"] = df[train.shape[0]:].reset_index(drop=True)
+
+class Pca(Feature):    # 効果あり 1 だけでも良い
     def create_features(self):
         df = fill_features_na(features.copy()) # 欠損値を穴埋め
         scaler = StandardScaler()
@@ -243,10 +250,25 @@ class Polynomial3d(Feature):
         self.train = poly_df[: train.shape[0]].reset_index(drop=True)
         self.test = poly_df[train.shape[0]:].reset_index(drop=True)
 
-class FraminghamRiskScore(Feature): # 効果なし
+class FraminghamRiskScore(Feature):
+
     # https://www.nhlbi.nih.gov/sites/default/files/media/docs/risk-assessment.pdf
     """
-    HDL は無し
+    12   75.75     LnAge_LnTotalCho
+    13   77.50           cigsPerDay
+    14  110.50       LnUntreatedSBP
+    15  114.75           LnTotalCho
+    16  115.50                diaBP
+    17  122.25  LnAge_CurrentSmoker
+    18  145.25                LnAge
+    19  203.25                  BMI
+    20  206.50                  Sum
+    21  225.25              glucose
+    22  243.50                  age
+    23  280.75                sysBP
+    ということで
+    ["Sum", "LnAge", "LnAge_CurrentSmoker", "LnTotalCho", "LnUntreatedSBP", "LnAge_LnTotalCho"]
+    とかが良さそう
     """
     def create_features(self):
         df = pd.DataFrame()

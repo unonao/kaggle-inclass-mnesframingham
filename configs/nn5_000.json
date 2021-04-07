@@ -1,7 +1,7 @@
 {
     "features": [
         "original",
-        "pca4",
+        "pca1",
         "age_sysbp",
         "female08_sysbp",
         "female085_age"
@@ -20,9 +20,10 @@
         "momentum": 0.9,
         "early_stopping_step": 10,
         "early_stop": true,
-        "seed": 49,
+        "seed": 31,
         "num_class": 2
     },
+    "fold": 4,
     "seed_num": 1,
     "loss": "auc",
     "target_name": "TenYearCHD",

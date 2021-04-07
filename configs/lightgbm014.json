@@ -1,7 +1,11 @@
 {
     "features": [
         "original",
-        "pca"
+        "pca1",
+        "age_sysbp",
+        "female08_sysbp",
+        "female085_age",
+        "count_null"
     ],
     "model": "lightgbm",
     "params": {
@@ -17,6 +21,7 @@
         "seed": 41,
         "num_threads": 7
     },
+    "fold": 4,
     "seed_num": 1,
     "loss": "auc",
     "target_name": "TenYearCHD",

@@ -1,17 +1,16 @@
 {
     "features": [
         "original",
-        "pca",
+        "pca1",
         "age_sysbp",
         "female08_sysbp",
-        "female085_age",
-        "prevalent_hyp_target"
+        "female085_age"
     ],
     "model": "nn",
     "params": {
         "epochs": 50,
         "bs": 256,
-        "hidden_size": 100,
+        "hidden_size": 150,
         "dropout_rate": 0.3,
         "layer_num": 4,
         "scheduler": "CosineAnnealingWarmRestarts",
@@ -21,10 +20,11 @@
         "momentum": 0.9,
         "early_stopping_step": 10,
         "early_stop": true,
-        "seed": 49,
+        "seed": 31,
         "num_class": 2
     },
-    "seed_num": 1,
+    "fold": 4,
+    "seed_num": 5,
     "loss": "auc",
     "target_name": "TenYearCHD",
     "ID_name": "index"

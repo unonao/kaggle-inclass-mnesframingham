@@ -1,7 +1,7 @@
 {
     "features": [
         "original",
-        "pca",
+        "pca1",
         "age_sysbp",
         "female08_sysbp",
         "female085_age"
@@ -9,11 +9,12 @@
     "model": "logistic_regression",
     "params": {
         "penalty": "l2",
-        "C": 0.1,
+        "C": 0.02,
         "max_iter": 1000,
         "seed": 41,
         "num_class": 2
     },
+    "fold": 4,
     "seed_num": 5,
     "loss": "auc",
     "target_name": "TenYearCHD",
