@@ -5,15 +5,14 @@
 https://www.kaggle.com/c/mnesframingham/overview
 
 
-# やること
-- スタッキング
-
 # 良かったやつ
-- lightgbm
-    - lightgbm006
-- nn
-    - nn4_000
+- best_nn4: private 0.70015, public 0.75031
 
+# 試したこと
+- PCA
+- polynomial features
+- female:0.8, male:1.0 として、別の特徴量と掛け合わせる
+- LightGBM, nn(3層~5層), 1dCNN, logistic regression
 
 # Structures
 
