@@ -54,9 +54,9 @@ class TestDataset:
 class NNModel(nn.Module):
     def __init__(self, num_features, num_targets, hidden_size):
         super(NNModel, self).__init__()
-        cha_1 = 16
-        cha_2 = 32
-        cha_3 = 32
+        cha_1 = 32
+        cha_2 = 64
+        cha_3 = 64
 
         cha_1_reshape = int(hidden_size/cha_1)
         cha_po_1 = int(hidden_size/cha_1/2)
@@ -112,15 +112,15 @@ class NNModel(nn.Module):
         x = F.relu(self.conv1(x))
 
         x = self.ave_po_c1(x)
-
+        """
         x = self.batch_norm_c2(x)
         x = self.dropout_c2(x)
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv2(x))"""
         x_s = x
-
+        """
         x = self.batch_norm_c2_1(x)
         x = self.dropout_c2_1(x)
-        x = F.relu(self.conv2_1(x))
+        x = F.relu(self.conv2_1(x))"""
 
         x = self.batch_norm_c2_2(x)
         x = self.dropout_c2_2(x)

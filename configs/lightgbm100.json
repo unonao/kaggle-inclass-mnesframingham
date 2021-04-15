@@ -20,8 +20,9 @@
         "seed": 41,
         "num_threads": 7
     },
-    "fold": 3,
-    "seed_num": 5,
+    "sampling": "ADASYN",
+    "fold": 4,
+    "seed_num": 1,
     "loss": "auc",
     "target_name": "TenYearCHD",
     "ID_name": "index"

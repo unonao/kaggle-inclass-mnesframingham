@@ -23,7 +23,7 @@
         "seed": 31,
         "num_class": 2
     },
-    "fold": 4,
+    "fold": 3,
     "seed_num": 5,
     "loss": "auc",
     "target_name": "TenYearCHD",

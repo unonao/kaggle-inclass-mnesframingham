@@ -15,6 +15,7 @@ from utils import load_datasets, load_target, evaluate_score
 from models import LightGBM, NeuralNet,LogisticRegressionClassifier, CNN1d
 import matplotlib.pyplot as plt
 import seaborn as sns
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
 # 引数で config の設定を行う
 parser = argparse.ArgumentParser()
@@ -81,6 +82,17 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
         else:
             logger.debug("No such model name")
             raise Exception
+
+        if "sampling" in config:
+            if config["sampling"]=="SMOTE":
+                X_train, y_train = SMOTE().fit_resample(X_train, y_train)
+            elif config["sampling"]=="ADASYN":
+                X_train, y_train = ADASYN().fit_resample(X_train, y_train)
+            elif config["sampling"]=="RandomOverSampler":
+                X_train, y_train = RandomOverSampler().fit_resample(X_train, y_train)
+            else:
+                raise
+
         y_pred, y_valid_pred, model = classifier.train_and_predict(X_train, X_valid, y_train, y_valid, X_test, model_params)
 
 
@@ -132,17 +144,41 @@ def train_and_predict(X_train_all, y_train_all, X_test, seed_num):
 
     return oof_df, sub
 
+# stacking 用
+def stack_load_df(stacking_name):
+    oof_df = pd.DataFrame()
+    test_df = pd.DataFrame()
+    for i, path in enumerate(stacking_name):
+        path = os.path.join("data/output/", "oof_"+path+".csv")
+        one_df = pd.read_csv(path)
+        one_df.columns=["0", f"oof{i}"]
+        one_df = one_df[f"oof{i}"]
+        oof_df = pd.concat([oof_df, one_df], axis=1)
+    for i, path in enumerate(stacking_name):
+        path = os.path.join("data/output/", "sub_"+path+".csv")
+        one_df = pd.read_csv(path)
+        one_df.columns=["id",f"test{i}"]
+        one_df = one_df[f"test{i}"]
+        test_df = pd.concat([test_df, one_df], axis=1)
+    return oof_df, test_df
+
 def main():
 
     logger.debug('config: {}'.format(options.config))
     logger.debug(feats)
     logger.debug(model_params)
-
     # 指定した特徴量からデータをロード
     X_train_all, X_test = load_datasets(feats)
     y_train_all = load_target(target_name)
     cols = X_train_all.columns
-    if model_name != "lightgbm":
+
+    # stacking
+    if "stacking" in config and config["stacking"]==True:
+        oof_df, test_df = stack_load_df(config["stacking_name"])
+        X_train_all = pd.concat([X_train_all,oof_df],axis=1)
+        X_test = pd.concat([X_test,test_df],axis=1)
+
+    if (model_name != "lightgbm") or ("sampling" in config):
         logger.debug("rank gauss")
         scaler = QuantileTransformer(n_quantiles=100, random_state=model_params["seed"],output_distribution="normal")
         all_df = pd.concat([X_train_all,X_test])
@@ -150,6 +186,7 @@ def main():
         all_df[cols] = scaler.fit_transform(all_df[cols]) # scale
         X_train_all = all_df[:X_train_all.shape[0]].reset_index(drop=True)
         X_test = all_df[X_train_all.shape[0]:].reset_index(drop=True)
+
     logger.debug("X_train_all shape: {}".format(X_train_all.shape))
     print(X_train_all.info())
 
